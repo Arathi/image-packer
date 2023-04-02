@@ -51,20 +51,6 @@ let overallProgressColor = computed(() => {
 // #endregion
 
 // #region methods
-function inc(delta: number = 1) {
-  counter.value += delta;
-  if (counter.value > 100) {
-    counter.value = 100;
-  }
-}
-
-function dec(delta: number = 1) {
-  counter.value -= delta;
-  if (counter.value < 0) {
-    counter.value = 0;
-  }
-}
-
 function loadTasks() {
   tasksLoading.value = true;
   let srcs = siteAdapter.getImageSources();
@@ -122,15 +108,8 @@ onMounted(() => {
 <template>
   <div class="packer-view">
     <el-row :gutter="10" class="packer-view-row buttons">
-      <el-col :span="8"> <el-button type="primary" @click="loadTasks">添加任务</el-button> </el-col>
-      <el-col :span="8"> <el-button type="primary" @click="printTestInfo">测试</el-button> </el-col>
-      <!--
-      <el-col> <el-button type="" @click="dec(10)">--</el-button> </el-col>
-      <el-col> <el-button type="" @click="dec()">-</el-button> </el-col>
-      <el-col> <span>{{ counter }}</span> </el-col>
-      <el-col> <el-button type="" @click="inc()">+</el-button> </el-col>
-      <el-col> <el-button type="" @click="inc(10)">++</el-button> </el-col>
-      -->
+      <el-col :span="6"> <el-button type="primary" @click="loadTasks">添加任务</el-button> </el-col>
+      <el-col :span="6"> <el-button type="primary" @click="printTestInfo">测试</el-button> </el-col>
     </el-row>
 
     <el-row :gutter="10" class="packer-view-row overall-progress" :wrap="false">
@@ -158,7 +137,7 @@ onMounted(() => {
     <el-scrollbar :height="height - 170">
       <el-row :gutter="10" v-for="task in tasks" class="packer-view-row">
         <el-col :span="4">{{ task.fileName }}</el-col>
-        <el-col :span="20">
+        <el-col :span="19">
           <el-progress
             :text-inside="true"
             :stroke-width="24"
