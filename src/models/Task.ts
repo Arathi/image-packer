@@ -8,13 +8,15 @@ export default class Task {
     static readonly STATUS_ERROR = 4;
     static readonly STATUS_COMPLETED = 5;
 
+    id: string;
     uri: string;
     fileName: string;
     status: number = Task.STATUS_WAITING;
-    totalLength: number = 0;
-    completedLength: number = 0;
+    loaded: number = 0;
+    total: number = 0;
 
     constructor(uri: string, fileName?: string) {
+        this.id = crypto.randomUUID();
         this.uri = uri;
         if (fileName == null) {
             fileName = getFileName(uri);
@@ -22,20 +24,13 @@ export default class Task {
         this.fileName = fileName;
     }
 
-    update(completedLength: number, totalLength?: number) {
-        this.completedLength = completedLength;
-        if (totalLength != null) {
-            this.totalLength = totalLength;
+    update(status: number, loaded: number|null = null, total: number|null = null) {
+        this.status = status;
+        if (loaded != null) {
+            this.loaded = loaded;
         }
-        this.updateStatusByLengths();
-    }
-
-    updateStatusByLengths() {
-        if (this.totalLength <= 0) {
-            this.status = Task.STATUS_WAITING;
-        }
-        if (this.completedLength == this.totalLength) {
-            this.status = Task.STATUS_COMPLETED;
+        if (total != null) {
+            this.total = total;
         }
     }
 }
