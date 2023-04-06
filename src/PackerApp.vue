@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, reactive } from 'vue';
+import { computed, onMounted, ref, reactive, Ref } from 'vue';
 import SiteAdapterFactory from './site-adapters/SiteAdapterFactory';
-import Task from './models/Task';
+import { Task } from './models/Task';
 import { generateFileName } from './utils/FileUtil';
+
+import { liveQuery, Observable } from 'dexie';
+import TaskDatabase from './databases/TaskDatabase';
+import { useObservable } from '@vueuse/rxjs';
+// import { Observable }  from 'rxjs';
 
 // #region const
 const ProgressBarColorGrey = '#323233';
@@ -12,7 +17,7 @@ const ProgressBarColorGreen = '#07c160';
 
 // #region data
 let counter = ref(0);
-let tasks = reactive(new Array<Task>());
+// let tasks = reactive(new Array<Task>());
 let tasksLoading = ref(false);
 let tasksLoadError = ref(false);
 let tasksLoaded = ref(false);
@@ -31,6 +36,14 @@ let selectedTaskStatuses = ref([
   'waiting', 
   'active'
 ]);
+let referer = window.location.href;
+
+let db = new TaskDatabase();
+
+let tasks = useObservable( liveQuery(
+    () => db.tasks.where("referer").equals(referer).toArray()
+  ) as any
+) as Readonly<Ref<Task[]>>;
 // #endregion
 
 // #region computed
@@ -53,36 +66,50 @@ let overallProgressColor = computed(() => {
 // #region methods
 function loadTasks() {
   tasksLoading.value = true;
-  let srcs = siteAdapter.getImageSources();
-  let amount = srcs.length;
-  let seq = 0;
-  for (let src of srcs) {
-    let task = new Task(
-      src, 
-      generateFileName(src, ++seq, amount)
-    );
-    // TODO 从indexedDB中获取文件内容
-    tasks.push(task);
-    console.log("创建任务", task);
+  if (tasks.value.length == 0) {
+    // 任务列表为空，开始创建任务
+    console.log("任务列表为空，开始创建任务");
+    createTasks();
   }
+  else {
+    console.log("已从indexedDB读取任务列表");
+  }
+
+  // 加载完成
   tasksLoading.value = false;
   tasksLoaded.value = true;
 }
 
+function createTasks() {
+  let srcs = siteAdapter.getImageSources();
+  let amount = srcs.length;
+
+  let seq = 0;
+  for (let src of srcs) {
+    let task = new Task(
+      src, 
+      referer, 
+      generateFileName(src, ++seq, amount)
+    );
+    db.tasks.add(task);
+    console.log("创建任务", task);
+  }
+}
+
 function getProgressColorByTaskStatus(task: Task) : string {
-  if (task.totalLength <= 0) return ProgressBarColorGrey;
-  if (task.completedLength <= 0) {
+  if (task.total <= 0) return ProgressBarColorGrey;
+  if (task.loaded <= 0) {
     return ProgressBarColorGrey;
   }
-  else if (task.completedLength < task.totalLength) {
+  else if (task.loaded < task.total) {
     return ProgressBarColorBlue;
   }
   return ProgressBarColorGreen;
 }
 
 function getTaskProgressPercentage(task: Task) : number {
-  if (task.totalLength <= 0) return 0;
-  let percent = task.completedLength * 100 / task.totalLength;
+  if (task.total <= 0) return 0;
+  let percent = task.loaded * 100 / task.total;
   return percent;
 }
 
@@ -108,7 +135,7 @@ onMounted(() => {
 <template>
   <div class="packer-view">
     <el-row :gutter="10" class="packer-view-row buttons">
-      <el-col :span="6"> <el-button type="primary" @click="loadTasks">添加任务</el-button> </el-col>
+      <el-col :span="6"> <el-button type="primary" @click="loadTasks">加载任务</el-button> </el-col>
       <el-col :span="6"> <el-button type="primary" @click="printTestInfo">测试</el-button> </el-col>
     </el-row>
 
