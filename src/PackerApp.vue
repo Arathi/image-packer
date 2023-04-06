@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, reactive, Ref } from 'vue';
+import { computed, onMounted, ref, Ref } from 'vue';
 import SiteAdapterFactory from './site-adapters/SiteAdapterFactory';
 import { Task } from './models/Task';
 import { generateFileName } from './utils/FileUtil';
 
-import { liveQuery, Observable } from 'dexie';
+import { liveQuery } from 'dexie';
 import TaskDatabase from './databases/TaskDatabase';
 import { useObservable } from '@vueuse/rxjs';
-// import { Observable }  from 'rxjs';
+
+import Logger from './utils/Logger';
 
 // #region const
 const ProgressBarColorGrey = '#323233';
@@ -16,8 +17,8 @@ const ProgressBarColorGreen = '#07c160';
 // #endregion
 
 // #region data
+let logger = Logger.getLogger("PackerApp");
 let counter = ref(0);
-// let tasks = reactive(new Array<Task>());
 let tasksLoading = ref(false);
 let tasksLoadError = ref(false);
 let tasksLoaded = ref(false);
@@ -68,11 +69,11 @@ function loadTasks() {
   tasksLoading.value = true;
   if (tasks.value.length == 0) {
     // 任务列表为空，开始创建任务
-    console.log("任务列表为空，开始创建任务");
+    logger.info("任务列表为空，开始创建任务");
     createTasks();
   }
   else {
-    console.log("已从indexedDB读取任务列表");
+    logger.info("已从indexedDB读取任务列表");
   }
 
   // 加载完成
@@ -92,7 +93,7 @@ function createTasks() {
       generateFileName(src, ++seq, amount)
     );
     db.tasks.add(task);
-    console.log("创建任务", task);
+    logger.info("创建任务", task);
   }
 }
 
@@ -114,7 +115,7 @@ function getTaskProgressPercentage(task: Task) : number {
 }
 
 function printTestInfo() {
-  console.log(selectedTaskStatuses.value);
+  logger.info(selectedTaskStatuses.value);
 }
 // #endregion
 
@@ -122,11 +123,11 @@ function printTestInfo() {
 onMounted(() => {
   width.value = window.innerWidth;
   height.value = window.innerHeight;
-  console.log(`body初始大小：${width.value}x${height.value}`);
+  logger.info(`body初始大小：${width.value}x${height.value}`);
   window.onresize = () => {
     width.value = window.innerWidth;
     height.value = window.innerHeight;
-    console.log(`body大小发生改变：${width.value}x${height.value}`);
+    logger.info(`body大小发生改变：${width.value}x${height.value}`);
   };
 });
 // #endregion

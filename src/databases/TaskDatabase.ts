@@ -1,7 +1,7 @@
 import Dexie, { Table } from 'dexie';
 
-import Task from '../models/Task';
-import File from '../models/File';
+import { ITask, Task } from '../models/Task';
+import { IFile, File } from '../models/File';
 
 export default class TaskDatabase extends Dexie {
     tasks!: Table<Task, number>;

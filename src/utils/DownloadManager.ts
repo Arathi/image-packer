@@ -1,49 +1,27 @@
-// import {} from 'tampermonkey';
-// import Dexie, { Table } from 'dexie';
-
-// 
-// export default class DownloadManager extends Dexie {
-//     static readonly DatabaseName: string = "image-packer";
-//     static readonly Version: number = 1;
-// 
-//     // db: Dexie;
-//     tasks!: Table<Task>;
-// 
-//     constructor() {
-//         super(DownloadManager.DatabaseName);
-//         this.version(DownloadManager.Version).stores({
-//             groups: '++id, name, referer',
-//             tasks: '++id, groupId, uri, fileName, status, totalLength, completedLength',
-//             files: '++id, uri, content, downloadTime'
-//         });
-//         // this.db = new Dexie("image-packer");
-//         // this.db.version(DownloadManager.version)
-//     }
-// }
-
-import Task from '../models/Task';
+import { Task } from '../models/Task';
+import { File } from '../models/File';
+import Logger from '../utils/Logger';
+import TaskDatabase from '../databases/TaskDatabase';
 import { GM_xmlhttpRequest } from '$';
-import localForage from 'localforage';
+
+let logger = Logger.getLogger("DownloadManager");
 
 export default class DownloadManager {
     static readonly DatabaseName: string = "image-packer";
     static readonly Version: number = 1;
 
-    tasks: LocalForage;
-    files: LocalForage;
+    db: TaskDatabase;
 
-    constructor() {
-        this.tasks = localForage.createInstance({
-            name: DownloadManager.DatabaseName,
-            storeName: "tasks"
-        });
-        this.files = localForage.createInstance({
-            name: DownloadManager.DatabaseName,
-            storeName: "files"
-        });
+    constructor(db: TaskDatabase) {
+        this.db = db;
     }
 
     startDownload(task: Task, timeout: number = 5000) {
+        if (task.id == null) {
+            logger.warn("任务ID不存在，任务无法开始。");
+            return;
+        }
+        
         GM_xmlhttpRequest({
             method: "GET",
             url: task.uri,
@@ -51,38 +29,65 @@ export default class DownloadManager {
             responseType: "blob",
             onload: (resp) => {
                 if (resp.status == 200) {
-                    console.info("加载成功");
+                    logger.info(`${task.uri} 下载完成`);
                     this.saveFile(task.uri, resp.response);
-                    this.updateTask(task.id, Task.STATUS_COMPLETED, null, null);
+                    this.updateTask(task.id!, Task.STATUS_COMPLETED, null, null);
+                }
+            },
+            onreadystatechange: (event) => {
+                if (event.readyState == XMLHttpRequest.OPENED) {
+                    logger.info(`${task.uri} 开始下载`);
+                }
+                else if (event.readyState == XMLHttpRequest.HEADERS_RECEIVED) {
+                    logger.info(`${task.uri} Headers已接收`);
+                }
+                else if (event.readyState == XMLHttpRequest.LOADING) {
+                    logger.info(`${task.uri} 正在下载`);
+                    this.updateTask(task.id!, Task.STATUS_ACTIVE, null, null);
+                }
+                else if (event.readyState == XMLHttpRequest.DONE) {
+                    logger.info(`${task.uri} 下载完成`);
+                    this.updateTask(task.id!, Task.STATUS_COMPLETED, null, null);
                 }
             },
             onprogress: (event) => {
                 if (event.lengthComputable) {
-                    this.updateTask(task.id, Task.STATUS_ACTIVE, event.loaded, event.total);
+                    this.updateTask(task.id!, null, event.loaded, event.total);
                 }
             }
-        })
+        });
     }
 
-    saveFile(uri: string, blob: Blob) : Promise<Blob> {
-        return this.files.setItem(
+    saveFile(uri: string, blob: Blob) : Promise<number> {
+        let file = new File(
             uri,
             blob
         );
+        return this.db.files.add(file);
     }
 
     getFile(uri: string) : Promise<Blob|null> {
-        return this.files.getItem(uri);
+        return new Promise<Blob|null>(() => {
+            this.db.files.where("uri").equals(uri).first().then((file) => {
+                if (file != null) {
+                    return  file.blob;
+                }
+                return null;
+            });
+        });
     }
 
-    async updateTask(id: string, status: number, loaded: number|null, total: number|null) : Promise<Task|null> {
-        let task: Task | null = await this.tasks.getItem(id);
-        if (task != null) {
-            task.update(status, loaded, total);
-            return this.tasks.setItem(id, task);
+    updateTask(id: number, status: number|null, loaded: number|null, total: number|null) : Promise<number> {
+        let changes: any = {};
+        if (status != null) {
+            changes.status = status;
         }
-        return new Promise(() => {
-            return null;
-        });
+        if (loaded != null) {
+            changes.loaded = loaded;
+        }
+        if (total != null) {
+            changes.total = total;
+        }
+        return this.db.tasks.update(id, changes);
     }
 }
