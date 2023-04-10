@@ -10,6 +10,8 @@ import { useObservable } from '@vueuse/rxjs';
 
 import Logger from './utils/Logger';
 
+import DownloadManager from './utils/DownloadManager';
+
 // #region const
 const ProgressBarColorGrey = '#323233';
 const ProgressBarColorBlue = '#1989fa';
@@ -17,14 +19,27 @@ const ProgressBarColorGreen = '#07c160';
 // #endregion
 
 // #region data
-let logger = Logger.getLogger("PackerApp");
 let counter = ref(0);
 let tasksLoading = ref(false);
 let tasksLoadError = ref(false);
 let tasksLoaded = ref(false);
-let siteAdapter = SiteAdapterFactory.createAdapter();
 let width = ref(0);
 let height = ref(0);
+let selectedTaskStatuses = ref([
+  'waiting', 
+  'active'
+]);
+
+let referer = window.location.href;
+let tasks = useObservable( liveQuery(
+    () => db.tasks.where("referer").equals(referer).toArray()
+  ) as any
+) as Readonly<Ref<Task[]>>;
+
+let siteAdapter = SiteAdapterFactory.createAdapter();
+let logger = Logger.getLogger("PackerApp");
+let db = new TaskDatabase();
+let downloadMgr = new DownloadManager(db);
 let taskStatuses = {
   'waiting': '等待',
   'active': '活动',
@@ -33,22 +48,10 @@ let taskStatuses = {
   'error': '错误',
   'complete': '完成'
 };
-let selectedTaskStatuses = ref([
-  'waiting', 
-  'active'
-]);
-let referer = window.location.href;
-
-let db = new TaskDatabase();
-
-let tasks = useObservable( liveQuery(
-    () => db.tasks.where("referer").equals(referer).toArray()
-  ) as any
-) as Readonly<Ref<Task[]>>;
 // #endregion
 
 // #region computed
-let overallProgresspercentage = computed(() => {
+let overallProgressPercentage = computed(() => {
   return counter.value;
 });
 
@@ -65,6 +68,9 @@ let overallProgressColor = computed(() => {
 // #endregion
 
 // #region methods
+/**
+ * 加载任务
+ */
 function loadTasks() {
   tasksLoading.value = true;
   if (tasks.value.length == 0) {
@@ -81,6 +87,9 @@ function loadTasks() {
   tasksLoaded.value = true;
 }
 
+/**
+ * 创建任务
+ */
 function createTasks() {
   let srcs = siteAdapter.getImageSources();
   let amount = srcs.length;
@@ -97,6 +106,10 @@ function createTasks() {
   }
 }
 
+/**
+ * 根据任务状态获取进度条颜色
+ * @param task 
+ */
 function getProgressColorByTaskStatus(task: Task) : string {
   if (task.total <= 0) return ProgressBarColorGrey;
   if (task.loaded <= 0) {
@@ -108,6 +121,10 @@ function getProgressColorByTaskStatus(task: Task) : string {
   return ProgressBarColorGreen;
 }
 
+/**
+ * 获取任务进度条百分比文本
+ * @param task 
+ */
 function getTaskProgressPercentage(task: Task) : number {
   if (task.total <= 0) return 0;
   let percent = task.loaded * 100 / task.total;
@@ -146,7 +163,7 @@ onMounted(() => {
         <el-progress
           :text-inside="true"
           :stroke-width="24"
-          :percentage="overallProgresspercentage"
+          :percentage="overallProgressPercentage"
           :color="overallProgressColor"
         />
       </el-col>

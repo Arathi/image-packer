@@ -1,12 +1,25 @@
 import { getFileName } from '../utils/FileUtil';
 
 export interface ITask {
+    // 编号（自动）
     id?: number;
+
+    // URI
     uri: string;
+
+    // 引用页面
     referer: string;
+
+    // 文件名
     fileName: string;
+
+    // 状态
     status: number;
+
+    // 已完成字节数
     loaded: number;
+
+    // 总字节数
     total: number;
 }
 

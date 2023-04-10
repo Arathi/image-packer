@@ -1,7 +1,14 @@
 export interface IFile {
+    // 编号（自动）
     id?: number;
+
+    // URI
     uri: string;
+
+    // 数据
     blob: Blob;
+
+    // 完成时间
     completedAt: Date;
 }
 

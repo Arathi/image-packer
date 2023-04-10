@@ -1,7 +1,7 @@
 import Dexie, { Table } from 'dexie';
 
-import { ITask, Task } from '../models/Task';
-import { IFile, File } from '../models/File';
+import { Task } from '../models/Task';
+import { File } from '../models/File';
 
 export default class TaskDatabase extends Dexie {
     tasks!: Table<Task, number>;
@@ -9,9 +9,9 @@ export default class TaskDatabase extends Dexie {
 
     constructor(name: string = "image-packer") {
         super(name);
-        this.version(1).stores({
+        this.version(2).stores({
             tasks: "++id, uri, referer, fileName, status, loaded, total",
-            files: "++id, uri, blob"
+            files: "++id, uri, blob, completedAt"
         });
     }
 }

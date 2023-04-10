@@ -52,7 +52,11 @@ export default class DownloadManager {
             },
             onprogress: (event) => {
                 if (event.lengthComputable) {
+                    logger.info(`${task.uri} 下载进度更新：${event.loaded} / ${event.total}`);
                     this.updateTask(task.id!, null, event.loaded, event.total);
+                }
+                else {
+                    logger.info(`${task.uri} 下载进度更新，已下载${event.loaded}，但进度无法计算`);
                 }
             }
         });
